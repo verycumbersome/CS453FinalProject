@@ -122,8 +122,6 @@ def render_shape(z_res, xy_res, shape_func, multiplier = 1):
     z_range = [x * z_step for x in range(-z_res, z_res)]
     xy_range = [x * xy_step for x in range(0, xy_res)]
 
-    print(xy_range)
-
     for u in z_range:
         for v in xy_range:
             glBegin(GL_QUAD_STRIP)
@@ -154,6 +152,7 @@ def render_shape(z_res, xy_res, shape_func, multiplier = 1):
 
                 # glTexCoord2d(0.2 * quad_mat[i][0], 0.2 * quad_mat[i][2])
                 glNormal3f(normal_x, normal_y, normal_z)
+                # glNormal3f(quad_mat[i][0], quad_mat[i][1], quad_mat[i][2])
                 glTexCoord2d(quad_mat[i][0] / xy_res, quad_mat[i][2] / z_res)
                 glVertex3fv(quad_mat[i])
 

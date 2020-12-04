@@ -1,4 +1,5 @@
 import os
+from dataclasses import dataclass, field
 import numpy as np
 import glfw
 import OpenGL
@@ -14,7 +15,61 @@ import shapes
 WINDOW_W = 1500
 WINDOW_H = 1500
 
-display_mode = 4
+display_mode = 1
+
+@dataclass
+class vertex:
+    x: float
+    y: float
+    z: float
+    vx: float
+    vy: float
+    vz: float
+    s: float
+
+@dataclass
+class face:
+    count: int
+    vertices: int
+    nx: float
+    ny: float
+    nz: float
+
+@dataclass
+class PLY_vals:
+    f: face
+    v: vertex
+    vcount: int
+    fcount: int
+    norms: int
+    center: list
+
+def read_ply(filename):
+    with open(filename, "r") as ply_file:
+        header = ply_file.read().split("end_header")
+        header, data  = header[0], header[1]
+
+        n_verts = [x for x in header.split("\n") if "element vertex" in x][0]
+        n_faces = [x for x in header.split("\n") if "element face" in x][0]
+
+        n_verts = int(n_verts.split()[-1])
+        n_faces = int(n_faces.split()[-1])
+
+        print(header)
+
+        for i in range(n_verts):
+            v_info = data[1:].split("\n")[i].split()
+
+            v = vertex(
+                    int(v_info[0]),   # x
+                    int(v_info[1]),   # y
+                    int(v_info[2]),   # z
+                    float(v_info[3]), # vx
+                    float(v_info[4]), # vy
+                    float(v_info[5]), # vz
+                    float(v_info[6]), # s
+                )
+
 
 def lighting():
     glEnable(GL_DEPTH_TEST)
@@ -53,6 +108,7 @@ def read_texture(filename):
     return texture_id
 
 
+
 def init():
     glClearColor(0.2, 0.2, 0.2, 0.0)
     glShadeModel(GL_FLAT)
@@ -61,7 +117,8 @@ def init():
     glEnable(GL_TEXTURE_2D)
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-    read_texture("texture2.jpg")
+    read_ply("new_vector_data/v1.ply")
+    # read_texture("texture2.jpg")
 
 
 def keyboard(bkey, x, y):
