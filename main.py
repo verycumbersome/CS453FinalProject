@@ -16,38 +16,43 @@ WINDOW_W = 1500
 WINDOW_H = 1500
 
 display_mode = 1
+ply = None
 
 @dataclass
 class vertex:
     x: float
     y: float
     z: float
+
     vx: float
     vy: float
     vz: float
+
     s: float
+
+    rgb: dict = field(repr=False, default_factory=dict)
+
 
 @dataclass
 class face:
     count: int
-    vertices: int
-    nx: float
-    ny: float
-    nz: float
+    vertices: []
+
 
 @dataclass
-class PLY_vals:
-    f: face
-    v: vertex
-    vcount: int
-    fcount: int
-    norms: int
-    center: list
+class PLY:
+    vertices: list
+    faces: list
+
 
 def read_ply(filename):
+    """
+    Read and parse a PLY file
+    Output: PLY(vertices, faces) - vertices and faces parsed from file
+    """
     with open(filename, "r") as ply_file:
         header = ply_file.read().split("end_header")
-        header, data  = header[0], header[1]
+        header, data = header[0], header[1][1:].split("\n")
 
         n_verts = [x for x in header.split("\n") if "element vertex" in x][0]
         n_faces = [x for x in header.split("\n") if "element face" in x][0]
@@ -55,10 +60,9 @@ def read_ply(filename):
         n_verts = int(n_verts.split()[-1])
         n_faces = int(n_faces.split()[-1])
 
-        print(header)
-
+        vertices = []
         for i in range(n_verts):
-            v_info = data[1:].split("\n")[i].split()
+            v_info = data.pop(0).split()
 
             v = vertex(
                     int(v_info[0]),   # x
@@ -68,19 +72,36 @@ def read_ply(filename):
                     float(v_info[4]), # vy
                     float(v_info[5]), # vz
                     float(v_info[6]), # s
+                    {"r": 1.0, "g": 1.0, "b": 1.0}, #rgb
                 )
+            vertices.append(v)
 
+        faces = []
+        for i in range(n_faces):
+            f_info = data.pop(0).split()
+            f = face(
+                    int(f_info[0]),
+                    [
+                        vertices[int(f_info[1])],
+                        vertices[int(f_info[2])],
+                        vertices[int(f_info[3])],
+                        vertices[int(f_info[4])],
+                    ]
+                )
+            faces.append(f)
 
-def lighting():
-    glEnable(GL_DEPTH_TEST)
-    glEnable(GL_LIGHTING)
-    glEnable(GL_BLEND)
-    glLightfv(GL_LIGHT0, GL_POSITION, [10, 4, 10, 1])
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, [0.8, 1, 0.8, 1])
-    glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.1)
-    glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.05)
-    glEnable(GL_LIGHT0)
-    return
+        return(PLY(vertices, faces))
+
+# def lighting():
+    # glEnable(GL_DEPTH_TEST)
+    # glEnable(GL_LIGHTING)
+    # glEnable(GL_BLEND)
+    # glLightfv(GL_LIGHT0, GL_POSITION, [10, 4, 10, 1])
+    # glLightfv(GL_LIGHT0, GL_DIFFUSE, [0.8, 1, 0.8, 1])
+    # glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.1)
+    # glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.05)
+    # glEnable(GL_LIGHT0)
+    # return
 
 
 def read_texture(filename):
@@ -117,7 +138,9 @@ def init():
     glEnable(GL_TEXTURE_2D)
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-    read_ply("new_vector_data/v1.ply")
+
+    global ply
+    ply = read_ply("new_vector_data/v1.ply")
     # read_texture("texture2.jpg")
 
 
@@ -157,16 +180,17 @@ def display():
     glMatrixMode(GL_PROJECTION)
     gluPerspective(45, (WINDOW_H/WINDOW_W), 0.1, 50.0)
     glLoadIdentity()
-    glOrtho(-10.0, 10.0, -10.0, 10.0, -100000.0, 100000.0)
+    glOrtho(-20.0, 20.0, -20.0, 20.0, -100000.0, 100000.0)
 
     # Set Model view
     glMatrixMode(GL_MODELVIEW)
 
     global display_mode
+    global ply
 
     if display_mode == 1:
-        glRotatef(0.01, 1, 1, 1)
-        shapes.plane(5)
+        glRotatef(0.5, 1, 1, 1)
+        shapes.render_ply(ply)
 
     if display_mode == 2:
         glRotatef(0.2, 1, 1, 1)
@@ -194,7 +218,7 @@ def main():
     glutInitWindowPosition(100, 100)
     wind = glutCreateWindow("Surface Parameterization")
 
-    lighting()
+    # lighting()
 
     init()
 

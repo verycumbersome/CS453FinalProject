@@ -158,3 +158,61 @@ def render_shape(z_res, xy_res, shape_func, multiplier = 1):
 
             glEnd()
 
+def get_dir(x, y, z, poly):
+    for face in poly.faces:
+        print(face)
+
+
+def extract_streamline(x, y, z, poly):
+    step = 0.01
+    count = 200
+    max_xyz = [0,0,0]
+    min_xyz = [0,0,0]
+
+    for vertex in poly.vertices:
+        if max_xyz[0] < vertex.x:
+            max_xyz[0] = vertex.x
+
+        if max_xyz[1] < vertex.y:
+            max_xyz[1] = vertex.y
+
+        if max_xyz[2] < vertex.z:
+            max_xyz[2] = vertex.z
+
+        if min_xyz[0] > vertex.x:
+            min_xyz[0] = vertex.x
+
+        if min_xyz[1] > vertex.y:
+            min_xyz[1] = vertex.y
+
+        if min_xyz[2] > vertex.z:
+            min_xyz[2] = vertex.z
+
+    if (x > max_xyz[0] or y > max_xyz[1] or z > max_xyz[2]):
+        return
+
+    if x < min_xyz[0] or y < min_xyz[1] or z < min_xyz[2]:
+        return
+
+    get_dir(x, y, z, poly)
+
+    for i in range(count):
+        pass
+
+
+
+def render_ply(poly):
+    """
+    Function to render OpenGL shape given function of form T(u, v)
+    Input: ply - a PLY file containing a list of vertices anf faces
+    Output: renders OpenGl PLY file
+    """
+
+    extract_streamline(0, 0, 0, poly)
+
+    glBegin(GL_POINTS)
+    for vertex in poly.vertices:
+        glColor3f(vertex.rgb["r"], vertex.rgb["g"], vertex.rgb["b"])
+        glVertex3fv((vertex.x, vertex.y, vertex.s))
+    glEnd()
+
