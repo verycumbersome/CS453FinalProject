@@ -8,16 +8,10 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
 import utils
-poly_files = [
-    utils.read_ply("new_vector_data/v1.ply"),
-    utils.read_ply("new_vector_data/v3.ply"),
-    utils.read_ply("new_vector_data/v4.ply"),
-    utils.read_ply("new_vector_data/v5.ply"),
-    utils.read_ply("new_vector_data/v6.ply"),
-    utils.read_ply("new_vector_data/v8.ply"),
-    utils.read_ply("new_vector_data/v9.ply"),
-    utils.read_ply("new_vector_data/v10.ply")
-]
+
+# Load all poly files
+p_ext = ["v1", "v3", "v4", "v5", "v6", "v8", "v9", "v10"]
+poly_files = [utils.read_ply("new_vector_data/" + x + ".ply") for x in p_ext]
 poly = poly_files[0]
 
 
@@ -56,7 +50,7 @@ def get_dir(x, y, z):
 
 def extract_streamline(x, y, z):
     step = 0.1
-    count = 200
+    count = 100
     max_xyz = [0, 0, 0]
     min_xyz = [0, 0, 0]
 
