@@ -1,8 +1,11 @@
 import os
-from dataclasses import dataclass, field
+import pdb
 import numpy as np
+
 import glfw
 import OpenGL
+
+from dataclasses import dataclass, field
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -16,31 +19,70 @@ WINDOW_W = 1500
 WINDOW_H = 1500
 
 display_mode = 1
-ply = None
+poly = None
 
 @dataclass
 class vertex:
+    # XYZ coordinates for the vertex
     x: float
     y: float
     z: float
 
+    # Vector field info for these points
     vx: float
     vy: float
     vz: float
 
+    # Scalar value at vertex
     s: float
 
+    # Size 3 dict of rgb: rgb["r"] = red_val, etc..
     rgb: dict = field(repr=False, default_factory=dict)
+
+    def __getitem__(self, index):
+        return({
+            "x": self.x,
+            "y": self.y,
+            "z": self.z,
+            "vx": self.vx,
+            "vy": self.vy,
+            "vz": self.vz,
+        }[index])
 
 
 @dataclass
 class face:
+    # Number of vertices and list of vertices for the face
     count: int
     vertices: []
 
+    def get_dir(self, x, y):
+        self.vec_dir = []
+
+        x1_vert = min(self.vertices, key = lambda k: k.x)
+        x2_vert = max(self.vertices, key = lambda k: k.x)
+        y1_vert = min(self.vertices, key = lambda k: k.y)
+        y2_vert = max(self.vertices, key = lambda k: k.y)
+
+        for vec in ["vx", "vy"]:
+            fx1y1 = self.vertices[self.vertices.index(x1_vert)][vec]
+            fx2y1 = self.vertices[(self.vertices.index(x2_vert) + 1) % 4][vec]
+            fx2y2 = self.vertices[(self.vertices.index(y1_vert) + 1) % 4][vec]
+            fx1y2 = self.vertices[(self.vertices.index(y2_vert) + 1) % 4][vec]
+
+            x1, x2, y1, y2 = x1_vert.x, x2_vert.x, y1_vert.y, y2_vert.y
+
+            dir_v = (x2 - x)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx1y1 + \
+                    (x - x1)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx1y1 + \
+                    (x2 - x)/(x2 - x1) * (y - y1)/(y2 - y1) * fx1y1 + \
+                    (x - x1)/(x2 - x1) * (y - y1)/(y2 - y1) * fx1y1
+
+            self.vec_dir.append(dir_v)
+
 
 @dataclass
-class PLY:
+class poly:
+    # All verts and faces for the polygon
     vertices: list
     faces: list
 
@@ -90,18 +132,18 @@ def read_ply(filename):
                 )
             faces.append(f)
 
-        return(PLY(vertices, faces))
+        return(poly(vertices, faces))
 
-# def lighting():
-    # glEnable(GL_DEPTH_TEST)
-    # glEnable(GL_LIGHTING)
-    # glEnable(GL_BLEND)
-    # glLightfv(GL_LIGHT0, GL_POSITION, [10, 4, 10, 1])
-    # glLightfv(GL_LIGHT0, GL_DIFFUSE, [0.8, 1, 0.8, 1])
-    # glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.1)
-    # glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.05)
-    # glEnable(GL_LIGHT0)
-    # return
+def lighting():
+    glEnable(GL_DEPTH_TEST)
+    glEnable(GL_LIGHTING)
+    glEnable(GL_BLEND)
+    glLightfv(GL_LIGHT0, GL_POSITION, [10, 4, 10, 1])
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, [0.8, 1, 0.8, 1])
+    glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.1)
+    glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.05)
+    glEnable(GL_LIGHT0)
+    return
 
 
 def read_texture(filename):
@@ -139,8 +181,8 @@ def init():
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
 
-    global ply
-    ply = read_ply("new_vector_data/v1.ply")
+    global poly
+    poly = read_ply("new_vector_data/v1.ply")
     # read_texture("texture2.jpg")
 
 
@@ -186,11 +228,11 @@ def display():
     glMatrixMode(GL_MODELVIEW)
 
     global display_mode
-    global ply
+    global poly
 
     if display_mode == 1:
         glRotatef(0.5, 1, 1, 1)
-        shapes.render_ply(ply)
+        shapes.render_ply(poly)
 
     if display_mode == 2:
         glRotatef(0.2, 1, 1, 1)

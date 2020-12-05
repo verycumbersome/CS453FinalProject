@@ -158,10 +158,6 @@ def render_shape(z_res, xy_res, shape_func, multiplier = 1):
 
             glEnd()
 
-def get_dir(x, y, z, poly):
-    for face in poly.faces:
-        print(face)
-
 
 def extract_streamline(x, y, z, poly):
     step = 0.01
@@ -194,9 +190,8 @@ def extract_streamline(x, y, z, poly):
     if x < min_xyz[0] or y < min_xyz[1] or z < min_xyz[2]:
         return
 
-    get_dir(x, y, z, poly)
-
-    for i in range(count):
+    for face in poly.faces:
+        face.get_dir(x, y)
         pass
 
 
