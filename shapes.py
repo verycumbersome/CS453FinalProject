@@ -7,23 +7,25 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
+import utils
+
 poly = utils.read_ply("new_vector_data/v1.ply")
 
-def get_dir(x, y, z, poly):
+def get_dir(x, y, z):
     dir_vec = []
 
     for face in poly.faces:
-        v = face.get_dir()
+        v = face.get_vert_order()
 
         if (x <= v["x2"].x and x >= v["x1"].x and
             y <= v["y1"].y and y <= v["y1"].y):
             break
 
     for vec in ["vx", "vy"]:
-        fx1y1 = face.vertices[face.vertices.index(v["x1"])][vec]
-        fx2y1 = face.vertices[(face.vertices.index(v["x2"]) + 1) % 4][vec]
-        fx2y2 = face.vertices[(face.vertices.index(v["y1"]) + 1) % 4][vec]
-        fx1y2 = face.vertices[(face.vertices.index(v["y2"]) + 1) % 4][vec]
+        fx1y1 = face.vertices[face.vertices.index(v["y1"])][vec]
+        fx2y1 = face.vertices[(face.vertices.index(v["y1"]) + 1) % 4][vec]
+        fx2y2 = face.vertices[(face.vertices.index(v["y1"]) + 2) % 4][vec]
+        fx1y2 = face.vertices[(face.vertices.index(v["y1"]) + 3) % 4][vec]
 
         x1, x2, y1, y2 = v["x1"].x, v["x2"].x, v["y1"].y, v["y2"].y
 
@@ -35,17 +37,20 @@ def get_dir(x, y, z, poly):
         dir_vec.append(dir_v)
 
     # Normalize direction
+    dir_vec.append(z)
     dir_vec = np.array(dir_vec)
     dir_vec = dir_vec / np.sqrt(np.sum(dir_vec**2))
 
     return(dir_vec)
 
 
-def extract_streamline(x, y, z, poly):
+def extract_streamline(x, y, z):
     step = 0.01
-    count = 200
+    count = 400
     max_xyz = [0,0,0]
     min_xyz = [0,0,0]
+
+    curr = np.array([x, y, z])
 
     for vertex in poly.vertices:
         if max_xyz[0] < vertex.x:
@@ -73,17 +78,23 @@ def extract_streamline(x, y, z, poly):
         return
 
     for i in range(count):
-        print(get_dir(x, y, z, poly))
+        glVertex3fv(tuple(curr))
+        curr = curr + get_dir(curr[0], curr[1], curr[2]) * step
+        glVertex3fv(tuple(curr))
 
 
-def render_ply(poly):
+def render_ply():
     """
     Function to render OpenGL shape given function of form T(u, v)
     Input: ply - a PLY file containing a list of vertices anf faces
     Output: renders OpenGl PLY file
     """
 
-    extract_streamline(0, 0, 0, poly)
+    glBegin(GL_LINES)
+    extract_streamline(3, 1, 0)
+    glEnd()
+
+    poly.faces[0].get_singularity()
 
     glBegin(GL_POINTS)
     for vertex in poly.vertices:

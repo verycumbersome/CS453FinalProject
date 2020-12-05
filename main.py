@@ -56,8 +56,6 @@ def read_texture(filename):
 
     return texture_id
 
-
-
 def init():
     glClearColor(0.2, 0.2, 0.2, 0.0)
     glShadeModel(GL_FLAT)
@@ -67,8 +65,6 @@ def init():
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
 
-    global poly
-    poly = read_ply("new_vector_data/v1.ply")
     # read_texture("texture2.jpg")
 
 
@@ -117,8 +113,8 @@ def display():
     global poly
 
     if display_mode == 1:
-        glRotatef(0.5, 1, 1, 1)
-        shapes.render_ply(poly)
+        # glRotatef(0.5, 1, 1, 1)
+        shapes.render_ply()
 
     if display_mode == 2:
         glRotatef(0.2, 1, 1, 1)
