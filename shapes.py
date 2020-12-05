@@ -8,8 +8,18 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
 import utils
+poly_files = [
+    utils.read_ply("new_vector_data/v1.ply"),
+    utils.read_ply("new_vector_data/v3.ply"),
+    utils.read_ply("new_vector_data/v4.ply"),
+    utils.read_ply("new_vector_data/v5.ply"),
+    utils.read_ply("new_vector_data/v6.ply"),
+    utils.read_ply("new_vector_data/v8.ply"),
+    utils.read_ply("new_vector_data/v9.ply"),
+    utils.read_ply("new_vector_data/v10.ply")
+]
+poly = poly_files[0]
 
-poly = utils.read_ply("new_vector_data/v1.ply")
 
 def get_dir(x, y, z):
     dir_vec = []
@@ -17,8 +27,8 @@ def get_dir(x, y, z):
     for face in poly.faces:
         v = face.get_vert_order()
 
-        if (x <= v["x2"].x and x >= v["x1"].x and
-            y <= v["y1"].y and y <= v["y1"].y):
+        if (x <= v["x2"].x and x >= v["x1"].x
+            and y <= v["y1"].y and y <= v["y1"].y):
             break
 
     for vec in ["vx", "vy"]:
@@ -45,10 +55,10 @@ def get_dir(x, y, z):
 
 
 def extract_streamline(x, y, z):
-    step = 0.01
-    count = 400
-    max_xyz = [0,0,0]
-    min_xyz = [0,0,0]
+    step = 0.1
+    count = 200
+    max_xyz = [0, 0, 0]
+    min_xyz = [0, 0, 0]
 
     curr = np.array([x, y, z])
 
@@ -71,11 +81,11 @@ def extract_streamline(x, y, z):
         if min_xyz[2] > vertex.z:
             min_xyz[2] = vertex.z
 
-    if (x > max_xyz[0] or y > max_xyz[1] or z > max_xyz[2]):
-        return
+    if (curr[0] > max_xyz[0] or curr[1] > max_xyz[1] or curr[2] > max_xyz[2]):
+        pass
 
-    if x < min_xyz[0] or y < min_xyz[1] or z < min_xyz[2]:
-        return
+    if (curr[0] < min_xyz[0] or curr[1] < min_xyz[1] or curr[2] < min_xyz[2]):
+        pass
 
     for i in range(count):
         glVertex3fv(tuple(curr))
@@ -83,22 +93,35 @@ def extract_streamline(x, y, z):
         glVertex3fv(tuple(curr))
 
 
-def render_ply():
+def render_ply(display_mode):
     """
     Function to render OpenGL shape given function of form T(u, v)
     Input: ply - a PLY file containing a list of vertices anf faces
     Output: renders OpenGl PLY file
     """
+    global poly
+    poly = poly_files[display_mode]
 
+    # Find and render all streamlines
     glBegin(GL_LINES)
-    extract_streamline(3, 1, 0)
+    # extract_streamline(3, 1, 0)
     glEnd()
 
-    poly.faces[0].get_singularity()
+    # Find and render all singularities
+    glPointSize(5.0)
+    glBegin(GL_POINTS)
 
+    for face in poly.faces:
+        singularity = face.get_singularity()
+        for sing in singularity:
+            glVertex3fv((sing[0], sing[1], 0))
+
+    glEnd()
+    glPointSize(1.0)
+
+    # Render all vertices in poly
     glBegin(GL_POINTS)
     for vertex in poly.vertices:
         glColor3f(vertex.rgb["r"], vertex.rgb["g"], vertex.rgb["b"])
         glVertex3fv((vertex.x, vertex.y, vertex.s))
     glEnd()
-

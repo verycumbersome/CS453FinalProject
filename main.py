@@ -17,7 +17,8 @@ import shapes
 WINDOW_W = 1500
 WINDOW_H = 1500
 
-display_mode = 1
+display_mode = 1 # Display mode for the vector fields
+p_file = 1 # Index of PLY file to load from list of 8 PLY files
 
 
 def lighting():
@@ -48,7 +49,7 @@ def read_texture(filename):
 
     if (file_extension == ".jpg"):
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.size[0], img.size[1], 0,
-                GL_RGB, GL_UNSIGNED_BYTE, img_data)
+            GL_RGB, GL_UNSIGNED_BYTE, img_data)
 
     if (file_extension == ".png"):
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.size[0], img.size[1], 0,
@@ -56,13 +57,12 @@ def read_texture(filename):
 
     return texture_id
 
+
 def init():
     glClearColor(0.2, 0.2, 0.2, 0.0)
     glShadeModel(GL_FLAT)
-
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_TEXTURE_2D)
-
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
 
     # read_texture("texture2.jpg")
@@ -70,10 +70,19 @@ def init():
 
 def keyboard(bkey, x, y):
     global display_mode
+    global p_file
 
     key = bkey.decode("utf-8")
     if key == chr(27):
         os._exit(0)
+
+    # Iterates forward to the next p_file
+    if key == "n":
+        p_file = (p_file + 1) % 8
+
+    # Iterates backwards to the previous p_file
+    if key == "p":
+        p_file = (p_file - 1) % 8
 
     if key == "1":
         display_mode = 1
@@ -110,11 +119,12 @@ def display():
     glMatrixMode(GL_MODELVIEW)
 
     global display_mode
+    global p_file
     global poly
 
     if display_mode == 1:
-        # glRotatef(0.5, 1, 1, 1)
-        shapes.render_ply()
+        glRotatef(0.5, 1, 1, 1)
+        shapes.render_ply(p_file)
 
     if display_mode == 2:
         glRotatef(0.2, 1, 1, 1)
