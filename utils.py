@@ -2,6 +2,8 @@ import os
 import math
 import numpy as np
 from dataclasses import dataclass, field
+# from numpy.linalg import eig, eigh, eigvals
+import numpy.linalg as LA
 
 
 @dataclass
@@ -99,6 +101,65 @@ class face:
 
         return(output)
 
+    def classify_singularity(self, x, y):
+        dir_vec = []
+
+        for vec in ["vx", "vy"]:
+            fx1y1 = self.vertices[self.vertices.index(self.y1)][vec]
+            fx2y1 = self.vertices[(self.vertices.index(self.y1) + 1) % 4][vec]
+            fx2y2 = self.vertices[(self.vertices.index(self.y1) + 2) % 4][vec]
+            fx1y2 = self.vertices[(self.vertices.index(self.y1) + 3) % 4][vec]
+
+            x1, x2, y1, y2 = self.x1.x, self.x2.x, self.y1.y, self.y2.y
+
+            # dir_v = (x2 - x)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx1y1 + \
+                    # (x - x1)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx2y1 + \
+                    # (x2 - x)/(x2 - x1) * (y - y1)/(y2 - y1) * fx1y2 + \
+                    # (x - x1)/(x2 - x1) * (y - y1)/(y2 - y1) * fx2y2
+
+            # Get fx
+            dir_x = (-1)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx1y1 + \
+                    (1)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx2y1 + \
+                    (-1)/(x2 - x1) * (y - y1)/(y2 - y1) * fx1y2 + \
+                    (1)/(x2 - x1) * (y - y1)/(y2 - y1) * fx2y2
+
+            # Get fy
+            dir_y = (x2 - x)/(x2 - x1) * (-1)/(y2 - y1) * fx1y1 + \
+                    (x - x1)/(x2 - x1) * (-1)/(y2 - y1) * fx2y1 + \
+                    (x2 - x)/(x2 - x1) * (1)/(y2 - y1) * fx1y2 + \
+                    (x - x1)/(x2 - x1) * (1)/(y2 - y1) * fx2y2
+
+
+            dir_vec.append([dir_x, dir_y])
+
+        dir_vec = np.array(dir_vec)
+
+        eig_vals = LA.eigvals(dir_vec)
+        eig_vals_complex, _ = LA.eigvalsh(dir_vec)
+
+        # print("\n\nIteration:")
+        # print(dir_vec)
+        # print(eig_vals)
+
+        sing_info = {}
+
+        if eig_vals[0] > 0:
+            if eig_vals[1] > 0:
+                sing_info["type"] = "Nodal source"
+            else:
+                sing_info["type"] = "Saddle point"
+
+        else:
+            if eig_vals[1] > 0:
+                sing_info["type"] = "Saddle point"
+            else:
+                sing_info["type"] = "Nodal sink"
+
+        return sing_info
+
+
+
+
 
 @dataclass
 class poly:
@@ -167,10 +228,10 @@ def read_ply(filename):
             f = face(
                     int(f_info[0]),
                     [
-                        vertices[int(f_info[1])],
-                        vertices[int(f_info[2])],
-                        vertices[int(f_info[3])],
-                        vertices[int(f_info[4])],
+                        vertices[int(f_info[1])], # v1
+                        vertices[int(f_info[2])], # v2
+                        vertices[int(f_info[3])], # v3
+                        vertices[int(f_info[4])], # v4
                     ]
                 )
             faces.append(f)

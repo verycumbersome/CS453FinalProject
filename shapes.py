@@ -49,8 +49,8 @@ def get_dir(x, y, z):
 
 
 def extract_streamline(x, y, z):
-    step = 0.1
-    count = 100
+    step = 0.05
+    count = 200
     max_xyz = [0, 0, 0]
     min_xyz = [0, 0, 0]
 
@@ -87,7 +87,14 @@ def extract_streamline(x, y, z):
         glVertex3fv(tuple(curr))
 
 
-def render_ply(display_mode):
+    curr = np.array([x, y, z])
+    for i in range(count):
+        glVertex3fv(tuple(curr))
+        curr = curr + get_dir(curr[0], curr[1], curr[2]) * -step
+        glVertex3fv(tuple(curr))
+
+
+def render_ply(display_mode, render_streamline):
     """
     Function to render OpenGL shape given function of form T(u, v)
     Input: ply - a PLY file containing a list of vertices anf faces
@@ -97,9 +104,10 @@ def render_ply(display_mode):
     poly = poly_files[display_mode]
 
     # Find and render all streamlines
-    glBegin(GL_LINES)
-    # extract_streamline(3, 1, 0)
-    glEnd()
+    if render_streamline:
+        glBegin(GL_LINES)
+        extract_streamline(3, 1, 0)
+        glEnd()
 
     # Find and render all singularities
     glPointSize(5.0)
@@ -109,9 +117,10 @@ def render_ply(display_mode):
         singularity = face.get_singularity()
         for sing in singularity:
             glVertex3fv((sing[0], sing[1], 0))
+            print(face.classify_singularity(sing[0], sing[1]))
 
     glEnd()
-    glPointSize(1.0)
+    glPointSize(2.0)
 
     # Render all vertices in poly
     glBegin(GL_POINTS)

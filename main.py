@@ -123,12 +123,11 @@ def display():
     global poly
 
     if display_mode == 1:
-        glRotatef(0.5, 1, 1, 1)
-        shapes.render_ply(p_file)
+        shapes.render_ply(p_file, True)
 
     if display_mode == 2:
-        glRotatef(0.2, 1, 1, 1)
-        shapes.render_shape(4, 4, shapes.cylinder)
+        glRotatef(0.5, 1, 1, 1)
+        shapes.render_ply(p_file, False)
 
     if display_mode == 3:
         glRotatef(1, 1, 1, 1)
