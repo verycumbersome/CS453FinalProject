@@ -46,6 +46,8 @@ class face:
     count: int
     vertices: list
 
+    has_singularity: bool = False
+
     def __post_init__(self):
         self.get_vert_order()
 
@@ -102,9 +104,11 @@ class face:
                 singularities.append((
                     linearly_interpolate(0, 1, self.x1.x, self.x2.x, s),
                     linearly_interpolate(0, 1, self.y1.y, self.y2.y, t),
-                    linearly_interpolate(0, 1, self.y1.s, self.y2.s, t)
+                    # linearly_interpolate(0, 1, self.y1.z, self.y2.z, 0)
+                    0,
                 ))
 
+        self.has_singularities = bool(len(singularities))
 
         return(singularities)
 
@@ -143,21 +147,21 @@ class face:
         eig_vals = LA.eigvals(dir_vec)
         eig_vals_complex, _ = LA.eigvalsh(dir_vec)
 
-        print("\n\nIteration:")
-        print(dir_vec)
-        print(eig_vals)
+        # print("\n\nIteration:")
+        # print(dir_vec)
+        # print(eig_vals)
 
         if eig_vals[0] > 0:
             if eig_vals[1] > 0:
-                return("Nodal source")
+                return("nodal_source")
             else:
-                return("Saddle point")
+                return("saddle_point")
 
         else:
             if eig_vals[1] > 0:
-                return("Saddle point")
+                return("saddle_point")
             else:
-                return("Nodal sink")
+                return("nodal_sink")
 
 
 @dataclass
@@ -166,21 +170,43 @@ class poly:
     vertices: list
     faces: list
 
+    sing_classes: dict = field(repr=False, default_factory=dict)
+
+    def __post_init__(self):
+        # Gets all rgb values for classification
+        self.sing_classes = {
+                "nodal_source":map(lambda x: x/255.0, (249, 249, 249)),
+                "nodal_sink":map(lambda x: x/255.0, (255, 224, 172)),
+                "saddle_point":map(lambda x: x/255.0, (255, 172, 183)),
+                "center":map(lambda x: x/255.0, (104, 134, 197)),
+                "focus":map(lambda x: x/255.0, (90, 164, 105)),
+            }
+
+        # Maps tuple for each color calue
+        self.sing_classes = {k:tuple(v) for k, v in self.sing_classes.items()}
+
+
     def calculate_singularities(self):
         self.singularities = []
+
         for face in self.faces:
             for s in face.get_singularity():
+                # Classification for singularity
+                c = face.classify_singularity(s)
+
                 self.singularities.append({
-                    "type":face.classify_singularity(s),
+                    "type":c,
                     "coordinates":s,
+                    "rgb":self.sing_classes[c],
                 })
 
         print(self.singularities)
 
     def render_singularities(self):
-        glPointSize(5.0)
+        glPointSize(10.0)
         glBegin(GL_POINTS)
         for s in self.singularities:
+            glColor3f(s["rgb"][0], s["rgb"][1], s["rgb"][2])
             glVertex3fv(s["coordinates"])
 
         glEnd()
