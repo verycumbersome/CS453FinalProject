@@ -10,7 +10,6 @@ from OpenGL.GLU import *
 
 import shapes
 
-
 # Load all poly files
 ply_filepath = "new_vector_data/"
 
@@ -18,83 +17,28 @@ poly_files = [shapes.read_ply(ply_filepath + x) for x in os.listdir(ply_filepath
 poly = poly_files[0]
 
 
-def get_dir(x, y, z):
-    dir_vec = []
-
-    for face in poly.faces:
-        v = face.get_vert_order()
-
-        if (x <= v["x2"].x and x >= v["x1"].x
-            and y <= v["y1"].y and y <= v["y1"].y):
-            break
-
-    for vec in ["vx", "vy"]:
-        fx1y1 = face.vertices[face.vertices.index(v["y1"])][vec]
-        fx2y1 = face.vertices[(face.vertices.index(v["y1"]) + 1) % 4][vec]
-        fx2y2 = face.vertices[(face.vertices.index(v["y1"]) + 2) % 4][vec]
-        fx1y2 = face.vertices[(face.vertices.index(v["y1"]) + 3) % 4][vec]
-
-        x1, x2, y1, y2 = v["x1"].x, v["x2"].x, v["y1"].y, v["y2"].y
-
-        dir_v = (x2 - x)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx1y1 + \
-                (x - x1)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx2y1 + \
-                (x2 - x)/(x2 - x1) * (y - y1)/(y2 - y1) * fx1y2 + \
-                (x - x1)/(x2 - x1) * (y - y1)/(y2 - y1) * fx2y2
-
-        dir_vec.append(dir_v)
-
-    # Normalize direction
-    dir_vec.append(z)
-    dir_vec = np.array(dir_vec)
-    dir_vec = dir_vec / np.sqrt(np.sum(dir_vec**2))
-
-    return(dir_vec)
+def linearly_interpolate(a, b, M, m, v):
+    """Interpolate between m and M with a range of [a, b] and input v"""
+    return((b - a) * ((v - m)/(M - m)) + a)
 
 
-def extract_streamline(x, y, z):
-    step = 0.05
-    count = 200
-    max_xyz = [0, 0, 0]
-    min_xyz = [0, 0, 0]
+def solve_quadratic(A, B, C):
+    """Solve quadratic equation given A, B, and C"""
+    if (A == 0):
+        return([])
 
-    curr = np.array([x, y, z])
+    discriminant = ((B ** 2) - 4*A*C)
+    if discriminant > 0:
+        s1 = (-B + math.sqrt(discriminant)) / (2*A)
+        s2 = (-B - math.sqrt(discriminant)) / (2*A)
+        return([s1, s2])
 
-    for vertex in poly.vertices:
-        if max_xyz[0] < vertex.x:
-            max_xyz[0] = vertex.x
+    elif (discriminant == 0):
+        return((-B + math.sqrt(discriminant)) / (2*A))
 
-        if max_xyz[1] < vertex.y:
-            max_xyz[1] = vertex.y
+    else:
+        return([])
 
-        if max_xyz[2] < vertex.z:
-            max_xyz[2] = vertex.z
-
-        if min_xyz[0] > vertex.x:
-            min_xyz[0] = vertex.x
-
-        if min_xyz[1] > vertex.y:
-            min_xyz[1] = vertex.y
-
-        if min_xyz[2] > vertex.z:
-            min_xyz[2] = vertex.z
-
-    if (curr[0] > max_xyz[0] or curr[1] > max_xyz[1] or curr[2] > max_xyz[2]):
-        pass
-
-    if (curr[0] < min_xyz[0] or curr[1] < min_xyz[1] or curr[2] < min_xyz[2]):
-        pass
-
-    for i in range(count):
-        glVertex3fv(tuple(curr))
-        curr = curr + get_dir(curr[0], curr[1], curr[2]) * step
-        glVertex3fv(tuple(curr))
-
-
-    curr = np.array([x, y, z])
-    for i in range(count):
-        glVertex3fv(tuple(curr))
-        curr = curr + get_dir(curr[0], curr[1], curr[2]) * -step
-        glVertex3fv(tuple(curr))
 
 def display_IBFV():
     pass
@@ -118,10 +62,6 @@ def render_ply(display_mode, render_streamline):
     # Find and render all streamlines
     if render_streamline:
         poly.render_streamlines()
-        # for sing in singularities:
-            # glBegin(GL_LINES)
-            # extract_streamline(sing[0], sing[1], 0)
-            # glEnd()
 
     # Render all vertices in poly
     glBegin(GL_POINTS)

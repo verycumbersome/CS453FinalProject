@@ -10,6 +10,8 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
+import utils
+
 
 @dataclass
 class vertex:
@@ -94,7 +96,7 @@ class face:
         C = (a00 * c01 - a01 * c00)
 
         # Find quadratic solution
-        quad_solution = solve_quadratic(A, B, C)
+        quad_solution = utils.solve_quadratic(A, B, C)
 
         # Linearly interpolate to find singularity
         singularities = []
@@ -102,8 +104,8 @@ class face:
             t = (-c00 / c01) - (c10 / c01) * s
             if (s > 0 and s < 1) and (t > 0 and t < 1):
                 singularities.append((
-                    linearly_interpolate(0, 1, self.x1.x, self.x2.x, s),
-                    linearly_interpolate(0, 1, self.y1.y, self.y2.y, t),
+                    utils.linearly_interpolate(0, 1, self.x1.x, self.x2.x, s),
+                    utils.linearly_interpolate(0, 1, self.y1.y, self.y2.y, t),
                     # linearly_interpolate(0, 1, self.y1.z, self.y2.z, 0)
                     0,
                 ))
@@ -115,8 +117,7 @@ class face:
 
     def classify_singularity(self, singularity):
         dir_vec = []
-        x = singularity[0]
-        y = singularity[1]
+        x, y = singularity[0], singularity[1]
 
         for vec in ["vx", "vy"]:
             fx1y1 = self.vertices[self.vertices.index(self.y1)][vec]
@@ -143,13 +144,10 @@ class face:
 
         # Convert fx/gx fy/gy matrix to numpy to calculate eigenvalues
         dir_vec = np.array(dir_vec)
-
         eig_vals = LA.eigvals(dir_vec)
-        eig_vals_complex, _ = LA.eigvalsh(dir_vec)
 
-        # print("\n\nIteration:")
-        # print(dir_vec)
-        # print(eig_vals)
+        # if np.iscomplex(eig_vals[0]):
+            # print("compelx")
 
         if eig_vals[0] > 0:
             if eig_vals[1] > 0:
@@ -163,22 +161,27 @@ class face:
             else:
                 return("nodal_sink")
 
+
 @dataclass
 class polyline:
     # All coordinates for the streamline
     vertices: list
 
     def render_streamline(self):
-        glBegin(GL_LINES)
         for s in self.vertices:
-            glVertex3fv(s)
-        glEnd()
+            print(s)
+            glColor3f(s.rgb["r"], s.rgb["g"], s.rgb["b"])
+            glVertex3fv((s.x, s.y, s.z))
+
 
 @dataclass
 class poly:
     # All verts and faces for the polygon
     vertices: list
     faces: list
+
+    # List of all singularities 
+    singularities: list = field(repr=False, default_factory=list)
 
     # List of all streamlines
     streamlines: list = field(repr=False, default_factory=list)
@@ -189,9 +192,9 @@ class poly:
     def __post_init__(self):
         # Gets all rgb values for classification
         self.sing_classes = {
-                "nodal_source":map(lambda x: x/255.0, (249, 249, 249)),
-                "nodal_sink":map(lambda x: x/255.0, (255, 224, 172)),
-                "saddle_point":map(lambda x: x/255.0, (255, 172, 183)),
+                "nodal_source":map(lambda x: x/255.0, (255, 0, 0)),
+                "nodal_sink":map(lambda x: x/255.0, (0, 224, 0)),
+                "saddle_point":map(lambda x: x/255.0, (0, 0, 255)),
                 "center":map(lambda x: x/255.0, (104, 134, 197)),
                 "focus":map(lambda x: x/255.0, (90, 164, 105)),
             }
@@ -276,69 +279,77 @@ class poly:
                 if (curr[0] < self.min_xyz[0] or curr[1] < self.min_xyz[1]
                                               or curr[2] < self.min_xyz[2]):
                     break
-                glVertex3fv(tuple(curr))
-                streamline.append(tuple(curr))
-                curr = curr + self.get_dir(curr) * i * step
-                streamline.append(tuple(curr))
-                glVertex3fv(tuple(curr))
+
+                # Get vx vy for coordinates
+                dir_vec = self.get_dir(curr)
+                # Add vertices to polyline
+                streamline.append(vertex(
+                    curr[0],
+                    curr[1],
+                    curr[2],
+                    dir_vec[0],
+                    dir_vec[1],
+                    dir_vec[2],
+                    0,
+                    rgb={"r": dir_vec[0], "g": dir_vec[1], "b": 1},
+                ))
+                curr = curr + dir_vec * i * step # i indicates -1 or 1
+                streamline.append(vertex(
+                    curr[0],
+                    curr[1],
+                    curr[2],
+                    dir_vec[0],
+                    dir_vec[1],
+                    dir_vec[2],
+                    0,
+                    rgb={"r": dir_vec[0], "g": dir_vec[1], "b": 1},
+                ))
 
         self.streamlines.append(polyline(streamline))
 
+        print(self.streamlines)
+
+        # os._exit(0)
+
     def calculate_singularities(self):
         """Calculate and find all the singularities for a given poly"""
-        self.singularities = []
+        if not self.singularities:
+            self.singularities = []
 
-        for face in self.faces:
-            for s in face.get_singularity():
-                # Classification for singularity
-                c = face.classify_singularity(s)
+            for face in self.faces:
+                for s in face.get_singularity():
+                    # Classification for singularity
+                    c = face.classify_singularity(s)
 
-                self.singularities.append({
-                    "type":c,
-                    "coordinates":s,
-                    "rgb":self.sing_classes[c],
-                })
-
+                    self.singularities.append({
+                        "type":c,
+                        "coordinates":s,
+                        "rgb":self.sing_classes[c],
+                    })
 
     def render_singularities(self):
         glPointSize(10.0)
         glBegin(GL_POINTS)
         for s in self.singularities:
+            # Colors singularity based on class
             glColor3f(s["rgb"][0], s["rgb"][1], s["rgb"][2])
+            # Renders singularity vertex
             glVertex3fv(s["coordinates"])
-
         glEnd()
         glPointSize(2.0)
 
     def render_streamlines(self):
-        for s in self.singularities:
-            self.calculate_streamline(s["coordinates"])
-            for p in self.streamlines:
-                p.render_streamline()
-            # s.render_streamline()
+        glPointSize(2.0)
+        glBegin(GL_LINES)
+        if not self.streamlines:
+            self.streamlines = []
+            for s in self.singularities:
+                # Calculates streamline for singularity
+                self.calculate_streamline(s["coordinates"])
 
-
-def linearly_interpolate(a, b, M, m, v):
-    """Interpolate between m and M with a range of [a, b] and input v"""
-    return((b - a) * ((v - m)/(M - m)) + a)
-
-
-def solve_quadratic(A, B, C):
-    """Solve quadratic equation given A, B, and C"""
-    if (A == 0):
-        return([])
-
-    discriminant = ((B ** 2) - 4*A*C)
-    if discriminant > 0:
-        s1 = (-B + math.sqrt(discriminant)) / (2*A)
-        s2 = (-B - math.sqrt(discriminant)) / (2*A)
-        return([s1, s2])
-
-    elif (discriminant == 0):
-        return((-B + math.sqrt(discriminant)) / (2*A))
-
-    else:
-        return([])
+        for stream in self.streamlines:
+            stream.render_streamline()
+        glEnd()
 
 
 def read_ply(filename):
