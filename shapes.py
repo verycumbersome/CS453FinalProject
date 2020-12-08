@@ -163,6 +163,16 @@ class face:
             else:
                 return("nodal_sink")
 
+@dataclass
+class polyline:
+    # All coordinates for the streamline
+    vertices: list
+
+    def render_streamline(self):
+        glBegin(GL_LINES)
+        for s in self.vertices:
+            glVertex3fv(s)
+        glEnd()
 
 @dataclass
 class poly:
@@ -170,6 +180,10 @@ class poly:
     vertices: list
     faces: list
 
+    # List of all streamlines
+    streamlines: list = field(repr=False, default_factory=list)
+
+    # Dict of all colors by classification
     sing_classes: dict = field(repr=False, default_factory=dict)
 
     def __post_init__(self):
@@ -181,12 +195,97 @@ class poly:
                 "center":map(lambda x: x/255.0, (104, 134, 197)),
                 "focus":map(lambda x: x/255.0, (90, 164, 105)),
             }
-
         # Maps tuple for each color calue
         self.sing_classes = {k:tuple(v) for k, v in self.sing_classes.items()}
 
+        # Get max and min vertices for poly
+        max_xyz = [0, 0, 0]
+        min_xyz = [0, 0, 0]
+
+        for v in self.vertices:
+            if max_xyz[0] < v.x:
+                max_xyz[0] = v.x
+            if max_xyz[1] < v.y:
+                max_xyz[1] = v.y
+            if max_xyz[2] < v.z:
+                max_xyz[2] = v.z
+            if min_xyz[0] > v.x:
+                min_xyz[0] = v.x
+            if min_xyz[1] > v.y:
+                min_xyz[1] = v.y
+            if min_xyz[2] > v.z:
+                min_xyz[2] = v.z
+        self.max_xyz, self.min_xyz = max_xyz, min_xyz
+
+    def get_dir(self, coords):
+        """
+        Gets the direction of point on the poly
+        Output: (dir_x, dir_y, dir_z) - normalized vec in direction at coords
+        """
+        x, y, z = coords[0], coords[1], coords[2]
+        dir_vec = []
+
+        # Iterate through faces until x is found within face vertices
+        for face in self.faces:
+            v = face.get_vert_order()
+
+            if (x <= v["x2"].x and x >= v["x1"].x
+                and y <= v["y1"].y and y <= v["y1"].y):
+                break
+
+        # Linearly interpolate between face vertices to find vx vy at x, y, z
+        for vec in ["vx", "vy"]:
+            fx1y1 = face.vertices[face.vertices.index(v["y1"])][vec]
+            fx2y1 = face.vertices[(face.vertices.index(v["y1"]) + 1) % 4][vec]
+            fx2y2 = face.vertices[(face.vertices.index(v["y1"]) + 2) % 4][vec]
+            fx1y2 = face.vertices[(face.vertices.index(v["y1"]) + 3) % 4][vec]
+
+            x1, x2, y1, y2 = v["x1"].x, v["x2"].x, v["y1"].y, v["y2"].y
+
+            dir_v = (x2 - x)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx1y1 + \
+                    (x - x1)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx2y1 + \
+                    (x2 - x)/(x2 - x1) * (y - y1)/(y2 - y1) * fx1y2 + \
+                    (x - x1)/(x2 - x1) * (y - y1)/(y2 - y1) * fx2y2
+
+            dir_vec.append(dir_v)
+
+        # Normalize direction
+        dir_vec.append(z)
+        dir_vec = np.array(dir_vec)
+        dir_vec = dir_vec / np.sqrt(np.sum(dir_vec**2))
+
+        return(dir_vec)
+
+    def calculate_streamline(self, coords):
+        """Calculate the streamline for a poly given coordinates"""
+        x, y, z = coords[0], coords[1], coords[2]
+        step = 0.05
+        count = 400
+
+        streamline = []
+
+        for i in [1, -1]:
+            curr = np.array([x, y, z])
+
+            for j in range(count):
+                # If calculated value is out of bounds return nothing
+                if (curr[0] > self.max_xyz[0] or curr[1] > self.max_xyz[1]
+                                              or curr[2] > self.max_xyz[2]):
+                    break
+
+                if (curr[0] < self.min_xyz[0] or curr[1] < self.min_xyz[1]
+                                              or curr[2] < self.min_xyz[2]):
+                    break
+                glVertex3fv(tuple(curr))
+                streamline.append(tuple(curr))
+                curr = curr + self.get_dir(curr) * i * step
+                streamline.append(tuple(curr))
+                glVertex3fv(tuple(curr))
+
+        self.streamlines.append(polyline(streamline))
 
     def calculate_singularities(self):
+        """Calculate and find all the singularities for a given poly"""
         self.singularities = []
 
         for face in self.faces:
@@ -200,7 +299,6 @@ class poly:
                     "rgb":self.sing_classes[c],
                 })
 
-        print(self.singularities)
 
     def render_singularities(self):
         glPointSize(10.0)
@@ -212,6 +310,12 @@ class poly:
         glEnd()
         glPointSize(2.0)
 
+    def render_streamlines(self):
+        for s in self.singularities:
+            self.calculate_streamline(s["coordinates"])
+            for p in self.streamlines:
+                p.render_streamline()
+            # s.render_streamline()
 
 
 def linearly_interpolate(a, b, M, m, v):

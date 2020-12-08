@@ -116,7 +116,8 @@ def render_ply(display_mode, render_streamline):
 
 
     # Find and render all streamlines
-    # if render_streamline:
+    if render_streamline:
+        poly.render_streamlines()
         # for sing in singularities:
             # glBegin(GL_LINES)
             # extract_streamline(sing[0], sing[1], 0)
