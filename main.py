@@ -12,7 +12,7 @@ from OpenGL.GLU import *
 from PIL import Image
 
 # Import opengl shapes from file
-import shapes
+import utils
 
 WINDOW_W = 1500
 WINDOW_H = 1500
@@ -123,23 +123,23 @@ def display():
     global poly
 
     if display_mode == 1:
-        shapes.render_ply(p_file, True)
+        utils.render_ply(p_file, True)
 
     if display_mode == 2:
         glRotatef(0.5, 1, 1, 1)
-        shapes.render_ply(p_file, False)
+        utils.render_ply(p_file, False)
 
     if display_mode == 3:
         glRotatef(1, 1, 1, 1)
-        shapes.render_shape(10, 10, shapes.cylinder)
+        utils.render_shape(10, 10, shapes.cylinder)
 
     if display_mode == 4:
         glRotatef(1, 1, 1, 1)
-        shapes.render_shape(10, 10, shapes.sphere, 4)
+        utils.render_shape(10, 10, shapes.sphere, 4)
 
     if display_mode == 5:
         glRotatef(1, 1, 1, 1)
-        shapes.render_shape(10, 10, shapes.vase)
+        utils.render_shape(10, 10, shapes.vase)
 
     glFlush()
 

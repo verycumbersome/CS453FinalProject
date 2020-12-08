@@ -5,11 +5,6 @@ from dataclasses import dataclass, field
 # from numpy.linalg import eig, eigh, eigvals
 import numpy.linalg as LA
 
-import OpenGL
-from OpenGL.GL import *
-from OpenGL.GLUT import *
-from OpenGL.GLU import *
-
 
 @dataclass
 class vertex:
@@ -99,11 +94,10 @@ class face:
         for s in quad_solution:
             t = (-c00 / c01) - (c10 / c01) * s
             if (s > 0 and s < 1) and (t > 0 and t < 1):
-                singularities.append((
+                singularities.append([
                     linearly_interpolate(0, 1, self.x1.x, self.x2.x, s),
-                    linearly_interpolate(0, 1, self.y1.y, self.y2.y, t),
-                    linearly_interpolate(0, 1, self.y1.s, self.y2.s, t)
-                ))
+                    linearly_interpolate(0, 1, self.y1.y, self.y2.y, t)
+                ])
 
 
         return(singularities)
@@ -147,17 +141,24 @@ class face:
         print(dir_vec)
         print(eig_vals)
 
+        sing_info = {}
+
+        if np.iscomplex(eig_vals[0]):
+            sing_info["type"]
+
         if eig_vals[0] > 0:
             if eig_vals[1] > 0:
-                return("Nodal source")
+                sing_info["type"] = "Nodal source"
             else:
-                return("Saddle point")
+                sing_info["type"] = "Saddle point"
 
         else:
             if eig_vals[1] > 0:
-                return("Saddle point")
+                sing_info["type"] = "Saddle point"
             else:
-                return("Nodal sink")
+                sing_info["type"] = "Nodal sink"
+
+        return sing_info
 
 
 @dataclass
@@ -170,21 +171,10 @@ class poly:
         self.singularities = []
         for face in self.faces:
             for s in face.get_singularity():
-                self.singularities.append({
-                    "type":face.classify_singularity(s),
-                    "coordinates":s,
-                })
+                print(face.classify_singularity(s)
+                self.singularities.append(s)
 
         print(self.singularities)
-
-    def render_singularities(self):
-        glPointSize(5.0)
-        glBegin(GL_POINTS)
-        for s in self.singularities:
-            glVertex3fv(s["coordinates"])
-
-        glEnd()
-        glPointSize(2.0)
 
 
 
