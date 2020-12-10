@@ -84,11 +84,12 @@ def solve_quadratic(A, B, C):
         return([])
 
 
-def make_patterns():
+def make_patterns(pixels_reset):
     global pixels
-    # pixels = (unsigned char *)malloc(sizeof(unsigned char)*win_width*win_height * 3)
-    # memset(pixels, 255, sizeof(unsigned char)*win_width*win_height * 3)
-    pixels = np.empty(win_width * win_height * 3, "uint8")
+
+    pixels = pixels_reset
+
+    # pixels = np.empty(win_width * win_height * 3, "uint8")
 
     # int lut[256]
     # int phase[NPN][NPN]
@@ -130,7 +131,7 @@ def make_patterns():
         glTexImage2D(GL_TEXTURE_2D, 0, 4, NPN, NPN, 0, GL_RGBA, GL_UNSIGNED_BYTE, pat)
         glEndList()
 
-        pixels = pat
+        # pixels = pat
 
         # print(pixels)
 
@@ -148,9 +149,7 @@ def make_patterns():
         # # glTexImage2D(GL_TEXTURE_2D, 0, 4, NPN, NPN, 0, GL_RGBA, GL_UNSIGNED_BYTE, pat)
         # glEndList()
 
-
 def display_IBFV():
-    make_patterns()
     global iframe
 
     glDisable(GL_LIGHTING)
@@ -173,8 +172,7 @@ def display_IBFV():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     # /*draw the model with using the pixels, using vector field to advert the texture coordinates*/
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, win_width, win_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels)
-    print("Here")
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, win_width, win_height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels)
     # glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.size[0], img.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, img_data)
 
     # double modelview_matrix1[16], projection_matrix1[16]
@@ -270,20 +268,13 @@ def display_IBFV():
     glMatrixMode(GL_PROJECTION)
     glPopMatrix()
 
-    print("here")
-    p = np.random.randint(0, 255, win_width * win_height * 3, "uint8")
-    print(pixels.reshape(-1).shape)
-    print(p.shape)
-    glReadPixels(0, 0, win_width, win_height, GL_RGB, GL_UNSIGNED_BYTE, pixels.reshape(-1))
-    # glReadPixels(0, 0, win_width, win_height, GL_RGB, GL_UNSIGNED_BYTE, p)
-
-    # glReadPixels(0, 0, win_width, win_height, GL_RGB, GL_UNSIGNED_BYTE, img_data)
-
+    glReadPixels(0, 0, win_width, win_height, GL_RGB, GL_UNSIGNED_BYTE, pixels)
 
     # /*draw the model with using pixels, note the tx and ty do not take the vector on points*/
     glClearColor(0.3, 0.3, 0.3, 1.0)  # background for rendering color coding and lighting
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, win_width, win_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels)
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, win_width, win_height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels)
 
     for temp_q in poly.faces:# //go through all the quads
         glBegin(GL_QUADS)
@@ -306,8 +297,6 @@ def display_IBFV():
     glShadeModel(GL_SMOOTH)
     glDisable(GL_BLEND)
 
-
-make_patterns()
 
 def render_ply(display_mode, render_streamline):
     """

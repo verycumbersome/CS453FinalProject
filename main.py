@@ -15,8 +15,11 @@ from PIL import Image
 # Import opengl shapes from file
 import utils
 
-WINDOW_W = 1500
-WINDOW_H = 1500
+WINDOW_W = 800
+WINDOW_H = 800
+
+win_width = 800
+win_height = 800
 
 display_mode = 1 # Display mode for the vector fields
 p_file = 1 # Index of PLY file to load from list of 8 PLY files
@@ -155,6 +158,9 @@ def main():
     # lighting()
 
     init()
+
+    pixels = np.empty(win_width * win_height * 3, "uint8")
+    utils.make_patterns(pixels)
 
     glutDisplayFunc(display)
     glutIdleFunc(display)
