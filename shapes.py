@@ -169,7 +169,6 @@ class polyline:
 
     def render_streamline(self):
         for s in self.vertices:
-            print(s)
             glColor3f(s.rgb["r"], s.rgb["g"], s.rgb["b"])
             glVertex3fv((s.x, s.y, s.z))
 
