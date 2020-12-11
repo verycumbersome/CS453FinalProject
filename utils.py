@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import pdb
 import math
@@ -14,11 +15,11 @@ from ctypes import *
 
 from PIL import Image
 
-import shapes
 import config
+import shapes
 
 
-# #IBFV stuff
+#IBFV stuff
 win_width = config.WIN_WIDTH
 win_height = config.WIN_HEIGHT
 NPN = 64
@@ -29,20 +30,45 @@ tmax = win_width / (SCALE*NPN)
 dmax = SCALE / win_width
 
 pixels = np.empty(win_width * win_height * 3, "uint8")
-
 DM = float(1.0/(100-1.0))
 
 # Load all poly files
-poly = config.POLY_FILES[0]
+POLY_FILES = [shapes.read_ply(config.PLY_FILEPATH + x) for x in os.listdir(config.PLY_FILEPATH)]
+poly = POLY_FILES[0]
 
 
-def linearly_interpolate(a, b, M, m, v):
-    """Interpolate between m and M with a range of [a, b] and input v"""
-    return((b - a) * ((v - m)/(M - m)) + a)
+def lighting():
+    glEnable(GL_DEPTH_TEST)
+    glEnable(GL_LIGHTING)
+    glEnable(GL_BLEND)
+    glLightfv(GL_LIGHT0, GL_POSITION, [10, 4, 10, 1])
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, [0.8, 1, 0.8, 1])
+    glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.1)
+    glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.05)
+    glEnable(GL_LIGHT0)
+    return
 
 
-def solve_quadratic(A, B, C):
+def solve_quadratic(fx1y1, fx2y1, fx1y2, fx2y2, gx1y1, gx2y1, gx1y2, gx2y2):
     """Solve quadratic equation given A, B, and C"""
+    # Calculate quadratic to find s1, s2 and t
+    a00 = fx1y1
+    a10 = fx2y1 - fx1y1
+    a01 = fx1y2 - fx1y1
+    a11 = fx1y1 - fx2y1 - fx1y2 + fx2y2
+
+    b00 = gx1y1
+    b10 = gx2y1 - gx1y1
+    b01 = gx1y2 - gx1y1
+    b11 = gx1y1 - gx2y1 - gx1y2 + gx2y2
+
+    c00 = a11 * b00 - a00 * b11
+    c10 = a11 * b10 - a10 * b11
+    c01 = a11 * b01 - a01 * b11
+
+    A = (-a11 * c10)
+    B = (-a11 * c00 - a01 * c10 + a10 * c01)
+    C = (a00 * c01 - a01 * c00)
     if (A == 0):
         return([])
 
@@ -62,25 +88,9 @@ def solve_quadratic(A, B, C):
 def make_patterns(pixels_reset):
     global pixels
 
-    pixels = pixels_reset
-
-    # pixels = np.empty(win_width * win_height * 3, "uint8")
-
-    # int lut[256]
-    # int phase[NPN][NPN]
-    # GLubyte pat[NPN][NPN][4]
-    # int i, j, k, t
-
-    # for (i = 0 i < 256 i++) lut[i] = i < 127 ? 0 : 255
-    # for (i = 0 i < NPN i++)
-    # for (j = 0 j < NPN j++) phase[i][j] = rand() % 256
-
     lut = np.zeros(256)
     phase = np.zeros((NPN, NPN))
     pat = np.zeros((NPN, NPN, 4), "uint8")
-    # for i in range(NPN):
-        # for j in range(NPN):
-            # pat[i][j] = [0,0,0,0]
 
     i, j, k, t = 0,0,0,0
 
@@ -106,23 +116,6 @@ def make_patterns(pixels_reset):
         glTexImage2D(GL_TEXTURE_2D, 0, 4, NPN, NPN, 0, GL_RGBA, GL_UNSIGNED_BYTE, pat)
         glEndList()
 
-        # pixels = pat
-
-        # print(pixels)
-
-
-    # for (k = 0 k < Npat k++) {
-        # t = k * 256 / Npat
-        # for (i = 0 i < NPN i++)
-        # for (j = 0 j < NPN j++) {
-            # pat[i][j][0] =
-            # pat[i][j][1] =
-            # pat[i][j][2] = lut[(t + phase[i][j]) % 255]
-            # pat[i][j][3] = int(0.12 * 255)
-            # }
-        # glNewList(k + 1, GL_COMPILE)
-        # # glTexImage2D(GL_TEXTURE_2D, 0, 4, NPN, NPN, 0, GL_RGBA, GL_UNSIGNED_BYTE, pat)
-        # glEndList()
 
 def display_IBFV():
     global iframe
@@ -281,13 +274,11 @@ def render_ply(display_mode, render_streamline):
     Output: renders OpenGl PLY file
     """
     global poly
-    poly = config.POLY_FILES[display_mode]
+    poly = POLY_FILES[display_mode]
     singularities = []
 
     # Find and render all singularities
-    poly.calculate_singularities()
     poly.render_singularities()
-
 
     # Find and render all streamlines
     if render_streamline:

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import math
 import numpy as np
@@ -10,7 +11,7 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
-import utils
+import shapes_helper
 
 
 @dataclass
@@ -58,6 +59,10 @@ class face:
         self.x2 = max(self.vertices, key=lambda k: k.x)
         self.y1 = min(self.vertices, key=lambda k: k.y)
         self.y2 = max(self.vertices, key=lambda k: k.y)
+        self.v_order = {
+            "x1": self.x1, "x2": self.x2,
+            "y1": self.y1, "y2": self.y2,
+            }
 
         return ({
             "x1": self.x1, "x2": self.x2,
@@ -65,102 +70,18 @@ class face:
             })
 
     def get_singularity(self):
-        # Get vector information at points
-        fx1y1 = self.vertices[self.vertices.index(self.y1)].vx
-        fx2y1 = self.vertices[(self.vertices.index(self.y1) + 1) % 4].vx
-        fx2y2 = self.vertices[(self.vertices.index(self.y1) + 2) % 4].vx
-        fx1y2 = self.vertices[(self.vertices.index(self.y1) + 3) % 4].vx
-
-        gx1y1 = self.vertices[self.vertices.index(self.y1)].vy
-        gx2y1 = self.vertices[(self.vertices.index(self.y1) + 1) % 4].vy
-        gx2y2 = self.vertices[(self.vertices.index(self.y1) + 2) % 4].vy
-        gx1y2 = self.vertices[(self.vertices.index(self.y1) + 3) % 4].vy
-
-        # Calculate quadratic to find s1, s2 and t
-        a00 = fx1y1
-        a10 = fx2y1 - fx1y1
-        a01 = fx1y2 - fx1y1
-        a11 = fx1y1 - fx2y1 - fx1y2 + fx2y2
-
-        b00 = gx1y1
-        b10 = gx2y1 - gx1y1
-        b01 = gx1y2 - gx1y1
-        b11 = gx1y1 - gx2y1 - gx1y2 + gx2y2
-
-        c00 = a11 * b00 - a00 * b11
-        c10 = a11 * b10 - a10 * b11
-        c01 = a11 * b01 - a01 * b11
-
-        A = (-a11 * c10)
-        B = (-a11 * c00 - a01 * c10 + a10 * c01)
-        C = (a00 * c01 - a01 * c00)
-
-        # Find quadratic solution
-        quad_solution = utils.solve_quadratic(A, B, C)
-
-        # Linearly interpolate to find singularity
-        singularities = []
-        for s in quad_solution:
-            t = (-c00 / c01) - (c10 / c01) * s
-            if (s > 0 and s < 1) and (t > 0 and t < 1):
-                singularities.append((
-                    utils.linearly_interpolate(0, 1, self.x1.x, self.x2.x, s),
-                    utils.linearly_interpolate(0, 1, self.y1.y, self.y2.y, t),
-                    # linearly_interpolate(0, 1, self.y1.z, self.y2.z, 0)
-                    0,
-                ))
-
-        self.has_singularities = bool(len(singularities))
+        singularities = shapes_helper.get_singularity(
+                self, self.v_order)
+        if singularities:
+            self.has_singularity = True
 
         return(singularities)
 
 
     def classify_singularity(self, singularity):
-        dir_vec = []
         x, y = singularity[0], singularity[1]
 
-        for vec in ["vx", "vy"]:
-            fx1y1 = self.vertices[self.vertices.index(self.y1)][vec]
-            fx2y1 = self.vertices[(self.vertices.index(self.y1) + 1) % 4][vec]
-            fx2y2 = self.vertices[(self.vertices.index(self.y1) + 2) % 4][vec]
-            fx1y2 = self.vertices[(self.vertices.index(self.y1) + 3) % 4][vec]
-
-            x1, x2, y1, y2 = self.x1.x, self.x2.x, self.y1.y, self.y2.y
-
-            # Get fx
-            dir_x = (-1)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx1y1 + \
-                    (1)/(x2 - x1) * (y2 - y)/(y2 - y1) * fx2y1 + \
-                    (-1)/(x2 - x1) * (y - y1)/(y2 - y1) * fx1y2 + \
-                    (1)/(x2 - x1) * (y - y1)/(y2 - y1) * fx2y2
-
-            # Get fy
-            dir_y = (x2 - x)/(x2 - x1) * (-1)/(y2 - y1) * fx1y1 + \
-                    (x - x1)/(x2 - x1) * (-1)/(y2 - y1) * fx2y1 + \
-                    (x2 - x)/(x2 - x1) * (1)/(y2 - y1) * fx1y2 + \
-                    (x - x1)/(x2 - x1) * (1)/(y2 - y1) * fx2y2
-
-            # Add fx/gx and fy/gy
-            dir_vec.append([dir_x, dir_y])
-
-        # Convert fx/gx fy/gy matrix to numpy to calculate eigenvalues
-        dir_vec = np.array(dir_vec)
-        eig_vals = LA.eigvals(dir_vec)
-
-        if np.iscomplex(eig_vals[0]) or np.iscomplex(eig_vals[0]):
-            return("focus")
-        if np.iscomplex(eig_vals[0]) and np.iscomplex(eig_vals[0]):
-            return("center")
-
-        if eig_vals[0] > 0:
-            if eig_vals[1] > 0:
-                return("nodal_source")
-            else:
-                return("saddle_point")
-        else:
-            if eig_vals[1] > 0:
-                return("saddle_point")
-            else:
-                return("nodal_sink")
+        return(shapes_helper.classify_singularity(self, x, y))
 
 
 @dataclass
@@ -171,7 +92,7 @@ class polyline:
     rgb: dict = field(repr=False, default_factory=dict)
 
     def render_arrows(self):
-        # arrow_size = 1
+        arrow_size = 1
         for i, v in enumerate(self.vertices):
             if i % round(len(self.vertices) / 15) == 0:
                 arrow_size = v.s * 2
@@ -197,17 +118,17 @@ class polyline:
                     v.z
                 )
 
-                glEnd()
-                glBegin(GL_TRIANGLES)
-                glVertex3fv(v1)
-                glVertex3fv(v2)
-                glVertex3fv(v3)
-                glEnd()
-                glBegin(GL_LINES)
+                # glEnd()
+                # glBegin(GL_TRIANGLES)
+                # glVertex3fv(v1)
+                # glVertex3fv(v2)
+                # glVertex3fv(v3)
+                # glEnd()
+                # glBegin(GL_LINES)
 
     def render_streamline(self):
         for v in self.vertices:
-            glColor3f(self.rgb[0], self.rgb[1], self.rgb[2])
+            glColor3f(v.rgb["r"], v.rgb["g"], v.rgb["b"])
             glVertex3fv((v.x, v.y, v.z))
 
 
@@ -257,6 +178,13 @@ class poly:
                 min_xyz[2] = v.z
         self.max_xyz, self.min_xyz = max_xyz, min_xyz
 
+        self.calculate_singularities()
+        if not self.streamlines:
+            self.streamlines = []
+            for s in self.singularities:
+                # Calculates streamline for singularity
+                self.calculate_streamline(s)
+
         # for i in range(-10, 10, 5):
             # for j in range(-10, 10, 5):
                 # print(i, j)
@@ -302,9 +230,9 @@ class poly:
 
         return(dir_vec)
 
-    def calculate_streamline(self, coords, rgb=None, s=0):
+    def calculate_streamline(self, vert):
         """Calculate the streamline for a poly given coordinates"""
-        x, y, z = coords[0], coords[1], coords[2]
+        x, y, z = vert["coordinates"]
         step = 0.01
         count = 2000
 
@@ -333,7 +261,7 @@ class poly:
                     dir_vec[0],
                     dir_vec[1],
                     dir_vec[2],
-                    s,
+                    0,
                     rgb={"r": dir_vec[0], "g": dir_vec[1], "b": 1},
                 ))
 
@@ -345,11 +273,11 @@ class poly:
                     dir_vec[0],
                     dir_vec[1],
                     dir_vec[2],
-                    s,
+                    0,
                     rgb={"r": dir_vec[0], "g": dir_vec[1], "b": 1},
                 ))
 
-        self.streamlines.append(polyline(streamline, rgb=rgb))
+        self.streamlines.append(polyline(streamline))
 
     def calculate_singularities(self):
         """Calculate and find all the singularities for a given poly"""
@@ -382,15 +310,10 @@ class poly:
     def render_streamlines(self):
         glPointSize(2.0)
         glBegin(GL_LINES)
-        if not self.streamlines:
-            self.streamlines = []
-            for s in self.singularities:
-                # Calculates streamline for singularity
-                self.calculate_streamline(s["coordinates"], s["rgb"], s["s"])
 
         for stream in self.streamlines:
             stream.render_streamline()
-            stream.render_arrows()
+            # stream.render_arrows()
         glEnd()
 
 

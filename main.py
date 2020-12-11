@@ -21,51 +21,12 @@ display_mode = 1 # Display mode for the vector fields
 p_file = 1 # Index of PLY file to load from list of 8 PLY files
 
 
-def lighting():
-    glEnable(GL_DEPTH_TEST)
-    glEnable(GL_LIGHTING)
-    glEnable(GL_BLEND)
-    glLightfv(GL_LIGHT0, GL_POSITION, [10, 4, 10, 1])
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, [0.8, 1, 0.8, 1])
-    glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.1)
-    glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.05)
-    glEnable(GL_LIGHT0)
-    return
-
-
-def read_texture(filename):
-    _, file_extension = os.path.splitext(filename)
-    img = Image.open(filename)
-    img_data = np.array(list(img.getdata()), np.int8)
-    texture_id = glGenTextures(1)
-
-    glBindTexture(GL_TEXTURE_2D, texture_id)
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL)
-
-    if (file_extension == ".jpg"):
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.size[0], img.size[1], 0,
-            GL_RGB, GL_UNSIGNED_BYTE, img_data)
-
-    if (file_extension == ".png"):
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.size[0], img.size[1], 0,
-            GL_RGBA, GL_UNSIGNED_BYTE, img_data)
-
-    return texture_id
-
-
 def init():
     glClearColor(0.2, 0.2, 0.2, 0.0)
     glShadeModel(GL_FLAT)
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_TEXTURE_2D)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-
-    # read_texture("texture2.jpg")
 
 
 def keyboard(bkey, x, y):
@@ -120,7 +81,6 @@ def display():
 
     global display_mode
     global p_file
-    global poly
 
     if display_mode == 1:
         utils.render_ply(p_file, True)
