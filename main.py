@@ -14,12 +14,8 @@ from PIL import Image
 
 # Import opengl shapes from file
 import utils
+import config
 
-WINDOW_W = 800
-WINDOW_H = 800
-
-win_width = 800
-win_height = 800
 
 display_mode = 1 # Display mode for the vector fields
 p_file = 1 # Index of PLY file to load from list of 8 PLY files
@@ -113,9 +109,9 @@ def display():
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL)
 
     # Set Projection window view
-    glViewport(0, 0, WINDOW_H, WINDOW_W)
+    glViewport(0, 0, config.WIN_HEIGHT, config.WIN_WIDTH)
     glMatrixMode(GL_PROJECTION)
-    gluPerspective(45, (WINDOW_H/WINDOW_W), 0.1, 50.0)
+    gluPerspective(45, (config.WIN_HEIGHT/config.WIN_WIDTH), 0.1, 50.0)
     glLoadIdentity()
     glOrtho(-20.0, 20.0, -20.0, 20.0, -100000.0, 100000.0)
 
@@ -130,20 +126,8 @@ def display():
         utils.render_ply(p_file, True)
 
     if display_mode == 2:
-        glRotatef(0.5, 1, 1, 1)
+        # glRotatef(0.5, 1, 1, 1)
         utils.render_ply(p_file, False)
-
-    if display_mode == 3:
-        glRotatef(1, 1, 1, 1)
-        utils.render_shape(10, 10, shapes.cylinder)
-
-    if display_mode == 4:
-        glRotatef(1, 1, 1, 1)
-        utils.render_shape(10, 10, shapes.sphere, 4)
-
-    if display_mode == 5:
-        glRotatef(1, 1, 1, 1)
-        utils.render_shape(10, 10, shapes.vase)
 
     glFlush()
 
@@ -151,7 +135,7 @@ def display():
 def main():
     glutInit()
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB | GLUT_DEPTH)
-    glutInitWindowSize(WINDOW_H, WINDOW_W)
+    glutInitWindowSize(config.WIN_HEIGHT, config.WIN_WIDTH)
     glutInitWindowPosition(100, 100)
     wind = glutCreateWindow("Surface Parameterization")
 
@@ -159,7 +143,7 @@ def main():
 
     init()
 
-    pixels = np.empty(win_width * win_height * 3, "uint8")
+    pixels = np.empty(config.WIN_WIDTH * config.WIN_HEIGHT * 3, "uint8")
     utils.make_patterns(pixels)
 
     glutDisplayFunc(display)

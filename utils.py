@@ -15,10 +15,12 @@ from ctypes import *
 from PIL import Image
 
 import shapes
+import config
 
-#IBFV stuff
-win_width = 800
-win_height = 800
+
+# #IBFV stuff
+win_width = config.WIN_WIDTH
+win_height = config.WIN_HEIGHT
 NPN = 64
 SCALE = 4.0
 Npat = 32
@@ -28,37 +30,10 @@ dmax = SCALE / win_width
 
 pixels = np.empty(win_width * win_height * 3, "uint8")
 
-
 DM = float(1.0/(100-1.0))
 
 # Load all poly files
-ply_filepath = "new_vector_data/"
-
-poly_files = [shapes.read_ply(ply_filepath + x) for x in os.listdir(ply_filepath)]
-poly = poly_files[0]
-
-
-# glClearColor(0.0, 0.0, 0.0, 0.0)
-# glShadeModel(GL_FLAT)
-# glPolygonMode(GL_FRONT, GL_FILL)
-
-# glDisable(GL_DITHER)
-# glEnable(GL_DEPTH_TEST)
-# glDepthFunc(GL_LESS)
-
-# glPixelStorei(GL_PACK_ALIGNMENT, 1)
-
-# glEnable(GL_NORMALIZE)
-
-# img = Image.open("noise3.jpg")
-# img_data = np.array(list(img.getdata()), np.int8)
-# texture_id = glGenTextures(1)
-
-# glBindTexture(GL_TEXTURE_2D, texture_id)
-# glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.size[0], img.size[1], 0,
-                        # GL_RGB, GL_UNSIGNED_BYTE, img_data)
-# glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.size[0], img.size[1], 0,
-                # GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+poly = config.POLY_FILES[0]
 
 
 def linearly_interpolate(a, b, M, m, v):
@@ -151,6 +126,7 @@ def make_patterns(pixels_reset):
 
 def display_IBFV():
     global iframe
+    global poly
 
     glDisable(GL_LIGHTING)
     glDisable(GL_LIGHT0)
@@ -304,24 +280,25 @@ def render_ply(display_mode, render_streamline):
     Input: ply - a PLY file containing a list of vertices anf faces
     Output: renders OpenGl PLY file
     """
-    # global poly
-    # poly = poly_files[display_mode]
-    # singularities = []
+    global poly
+    poly = config.POLY_FILES[display_mode]
+    singularities = []
 
-    # # Find and render all singularities
-    # poly.calculate_singularities()
-    # poly.render_singularities()
-
-
-    # # Find and render all streamlines
-    # if render_streamline:
-        # poly.render_streamlines()
+    # Find and render all singularities
+    poly.calculate_singularities()
+    poly.render_singularities()
 
 
-    display_IBFV()
+    # Find and render all streamlines
+    if render_streamline:
+        poly.render_streamlines()
+
+    else:
+        display_IBFV()
+
     # Render all vertices in poly
-    # glBegin(GL_POINTS)
-    # for vertex in poly.vertices:
-        # glColor3f(vertex.rgb["r"], vertex.rgb["g"], vertex.rgb["b"])
-        # glVertex3fv((vertex.x, vertex.y, vertex.z))
-    # glEnd()
+    glBegin(GL_POINTS)
+    for vertex in poly.vertices:
+        glColor3f(vertex.rgb["r"], vertex.rgb["g"], vertex.rgb["b"])
+        glVertex3fv((vertex.x, vertex.y, vertex.z))
+    glEnd()

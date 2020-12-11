@@ -146,15 +146,16 @@ class face:
         dir_vec = np.array(dir_vec)
         eig_vals = LA.eigvals(dir_vec)
 
-        # if np.iscomplex(eig_vals[0]):
-            # print("compelx")
+        if np.iscomplex(eig_vals[0]) or np.iscomplex(eig_vals[0]):
+            return("focus")
+        if np.iscomplex(eig_vals[0]) and np.iscomplex(eig_vals[0]):
+            return("center")
 
         if eig_vals[0] > 0:
             if eig_vals[1] > 0:
                 return("nodal_source")
             else:
                 return("saddle_point")
-
         else:
             if eig_vals[1] > 0:
                 return("saddle_point")
@@ -167,10 +168,47 @@ class polyline:
     # All coordinates for the streamline
     vertices: list
 
+    rgb: dict = field(repr=False, default_factory=dict)
+
+    def render_arrows(self):
+        # arrow_size = 1
+        for i, v in enumerate(self.vertices):
+            if i % round(len(self.vertices) / 15) == 0:
+                arrow_size = v.s * 2
+                print(v.s)
+                dir_vec = [v.vx, v.vy]
+                # dir_vec = dir_vec / np.linalg.norm(dir_vec)
+
+                theta = math.atan(dir_vec[1] / dir_vec[0])
+
+                v1 = (v.x, v.y, 0)
+                v2 = (v.x - dir_vec[0], v.y - dir_vec[1], 0)
+
+                # v3 = (v.x - dir_vec[0], v.y - dir_vec[1], 0)
+                # v4 = (v.x - dir_vec[0], v.y - dir_vec[1], 0)
+                v2 = (
+                    v.x + math.cos(theta - 0.1) * arrow_size,
+                    v.y + math.sin(theta - 0.1) * arrow_size,
+                    v.z,
+                )
+                v3 = (
+                    v.x + math.cos(theta + 0.1) * arrow_size,
+                    v.y + math.sin(theta + 0.1) * arrow_size,
+                    v.z
+                )
+
+                glEnd()
+                glBegin(GL_TRIANGLES)
+                glVertex3fv(v1)
+                glVertex3fv(v2)
+                glVertex3fv(v3)
+                glEnd()
+                glBegin(GL_LINES)
+
     def render_streamline(self):
-        for s in self.vertices:
-            glColor3f(s.rgb["r"], s.rgb["g"], s.rgb["b"])
-            glVertex3fv((s.x, s.y, s.z))
+        for v in self.vertices:
+            glColor3f(self.rgb[0], self.rgb[1], self.rgb[2])
+            glVertex3fv((v.x, v.y, v.z))
 
 
 @dataclass
@@ -191,9 +229,9 @@ class poly:
     def __post_init__(self):
         # Gets all rgb values for classification
         self.sing_classes = {
-                "nodal_source":map(lambda x: x/255.0, (255, 0, 0)),
-                "nodal_sink":map(lambda x: x/255.0, (0, 224, 0)),
-                "saddle_point":map(lambda x: x/255.0, (0, 0, 255)),
+                "nodal_source":map(lambda x: x/255.0, (225, 0, 0)),
+                "nodal_sink":map(lambda x: x/255.0, (0, 225, 0)),
+                "saddle_point":map(lambda x: x/255.0, (0, 0, 225)),
                 "center":map(lambda x: x/255.0, (104, 134, 197)),
                 "focus":map(lambda x: x/255.0, (90, 164, 105)),
             }
@@ -219,6 +257,12 @@ class poly:
                 min_xyz[2] = v.z
         self.max_xyz, self.min_xyz = max_xyz, min_xyz
 
+        # for i in range(-10, 10, 5):
+            # for j in range(-10, 10, 5):
+                # print(i, j)
+                # self.calculate_streamline((i , j, 0))
+
+
     def get_dir(self, coords):
         """
         Gets the direction of point on the poly
@@ -232,7 +276,7 @@ class poly:
             v = face.get_vert_order()
 
             if (x <= v["x2"].x and x >= v["x1"].x
-                and y <= v["y1"].y and y <= v["y1"].y):
+                and y <= v["y2"].y and y >= v["y1"].y):
                 break
 
         # Linearly interpolate between face vertices to find vx vy at x, y, z
@@ -258,11 +302,11 @@ class poly:
 
         return(dir_vec)
 
-    def calculate_streamline(self, coords):
+    def calculate_streamline(self, coords, rgb=None, s=0):
         """Calculate the streamline for a poly given coordinates"""
         x, y, z = coords[0], coords[1], coords[2]
-        step = 0.05
-        count = 400
+        step = 0.01
+        count = 2000
 
         streamline = []
 
@@ -289,9 +333,10 @@ class poly:
                     dir_vec[0],
                     dir_vec[1],
                     dir_vec[2],
-                    0,
+                    s,
                     rgb={"r": dir_vec[0], "g": dir_vec[1], "b": 1},
                 ))
+
                 curr = curr + dir_vec * i * step # i indicates -1 or 1
                 streamline.append(vertex(
                     curr[0],
@@ -300,15 +345,11 @@ class poly:
                     dir_vec[0],
                     dir_vec[1],
                     dir_vec[2],
-                    0,
+                    s,
                     rgb={"r": dir_vec[0], "g": dir_vec[1], "b": 1},
                 ))
 
-        self.streamlines.append(polyline(streamline))
-
-        print(self.streamlines)
-
-        # os._exit(0)
+        self.streamlines.append(polyline(streamline, rgb=rgb))
 
     def calculate_singularities(self):
         """Calculate and find all the singularities for a given poly"""
@@ -324,6 +365,7 @@ class poly:
                         "type":c,
                         "coordinates":s,
                         "rgb":self.sing_classes[c],
+                        "s":face.vertices[0].s,
                     })
 
     def render_singularities(self):
@@ -344,10 +386,11 @@ class poly:
             self.streamlines = []
             for s in self.singularities:
                 # Calculates streamline for singularity
-                self.calculate_streamline(s["coordinates"])
+                self.calculate_streamline(s["coordinates"], s["rgb"], s["s"])
 
         for stream in self.streamlines:
             stream.render_streamline()
+            stream.render_arrows()
         glEnd()
 
 
